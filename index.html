@@ -314,8 +314,8 @@
     <div>
       <span class="row-label">Tamanho do texto</span>
       <div class="slider-row">
-        <input type="range" id="fontsize" min="4" max="26" step="0.5" value="13">
-        <span class="slider-val" id="fontsize-val">13%</span>
+        <input type="range" id="fontsize" min="8" max="70" step="1" value="30">
+        <span class="slider-val" id="fontsize-val">30%</span>
       </div>
     </div>
   </div>
@@ -352,7 +352,7 @@
     mode: 'scroll',
     bg: 'dark',
     speed: 16,
-    fontsize: 13
+    fontsize: 30
   };
 
   // build swatches
@@ -397,9 +397,11 @@
       span.textContent = shown;
       span.style.color = hasText ? state.color : '';
       span.style.textShadow = hasText ? glow : 'none';
+      const containerH = displayWrap.clientHeight || window.innerHeight;
+      const basePx = containerH * (state.fontsize / 100);
       span.style.fontSize = (state.mode === 'static'
-        ? Math.min(state.fontsize, 18) + 'vmin'
-        : state.fontsize + 'vmin');
+        ? Math.min(basePx, containerH * 0.4) + 'px'
+        : basePx + 'px');
       track.appendChild(span);
     }
 
@@ -475,6 +477,12 @@
   });
 
   render();
+
+  window.addEventListener('resize', render);
+  window.addEventListener('orientationchange', render);
+  if(window.ResizeObserver){
+    new ResizeObserver(render).observe(displayWrap);
+  }
 })();
 </script>
 </body>
