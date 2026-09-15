@@ -60,7 +60,6 @@
     will-change:transform;
   }
   .msg-copy{
-    padding-right:8vw;
     font-family:'Archivo Black','Arial Black',sans-serif;
     letter-spacing:0.01em;
     line-height:1;
@@ -73,14 +72,14 @@
   }
 
   /* modos de exibição */
-  #display-wrap.mode-static #marquee-track{
-    animation:none !important;
+  #display-wrap.mode-static #marquee-track,
+  #display-wrap.mode-pulse #marquee-track{
     transform:none !important;
     width:100%;
     justify-content:center;
   }
-  #display-wrap.mode-static .msg-copy{
-    padding-right:0;
+  #display-wrap.mode-static .msg-copy,
+  #display-wrap.mode-pulse .msg-copy{
     white-space:normal;
     text-align:center;
     width:100%;
@@ -91,11 +90,6 @@
   @keyframes pulseGlow{
     0%,100%{opacity:1;}
     50%{opacity:.35;}
-  }
-
-  @keyframes scrollLeft{
-    from{transform:translateX(0);}
-    to{transform:translateX(-50%);}
   }
 
   /* status bar minima acima do display */
@@ -375,11 +369,16 @@
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
+  let currentAnim = null;
+
   function render(){
     const hasText = state.text.trim().length > 0;
     const shown = hasText ? state.text : 'Digite sua mensagem abaixo para acender o letreiro…';
 
+    if(currentAnim){ currentAnim.cancel(); currentAnim = null; }
+
     track.innerHTML = '';
+    track.style.transform = 'none';
     displayWrap.className = 'mode-' + state.mode;
 
     displayWrap.style.background = state.bg === 'black'
@@ -390,26 +389,37 @@
       ? `0 0 6px ${state.color}, 0 0 22px ${state.color}66, 0 0 46px ${state.color}33`
       : 'none';
 
-    const copyCount = state.mode === 'static' ? 1 : 2;
-    for(let i=0;i<copyCount;i++){
-      const span = document.createElement('span');
-      span.className = 'msg-copy' + (hasText ? '' : ' empty-hint');
-      span.textContent = shown;
-      span.style.color = hasText ? state.color : '';
-      span.style.textShadow = hasText ? glow : 'none';
-      const containerH = displayWrap.clientHeight || window.innerHeight;
-      const basePx = containerH * (state.fontsize / 100);
-      span.style.fontSize = (state.mode === 'static'
-        ? Math.min(basePx, containerH * 0.4) + 'px'
-        : basePx + 'px');
-      track.appendChild(span);
-    }
+    const span = document.createElement('span');
+    span.className = 'msg-copy' + (hasText ? '' : ' empty-hint');
+    span.textContent = shown;
+    span.style.color = hasText ? state.color : '';
+    span.style.textShadow = hasText ? glow : 'none';
+
+    const containerH = displayWrap.clientHeight || window.innerHeight;
+    const basePx = containerH * (state.fontsize / 100);
+    span.style.fontSize = (state.mode === 'static'
+      ? Math.min(basePx, containerH * 0.4) + 'px'
+      : basePx + 'px');
+
+    track.appendChild(span);
 
     if(state.mode === 'scroll' && hasText){
-      track.style.animation = `scrollLeft ${state.speed}s linear infinite`;
-    } else {
-      track.style.animation = 'none';
-      track.style.transform = 'none';
+      // mede a largura real do container e do texto, para começar
+      // sempre totalmente fora da tela (à direita) e terminar totalmente
+      // fora (à esquerda), como um letreiro físico de verdade.
+      const containerW = displayWrap.clientWidth;
+      const textW = span.getBoundingClientRect().width;
+      currentAnim = track.animate(
+        [
+          { transform: `translateX(${containerW}px)` },
+          { transform: `translateX(${-textW}px)` }
+        ],
+        {
+          duration: state.speed * 1000,
+          iterations: Infinity,
+          easing: 'linear'
+        }
+      );
     }
   }
 
