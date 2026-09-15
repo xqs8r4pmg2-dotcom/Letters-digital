@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Letreiro Digital</title>
+<style>
+  :root{
+    --bg-deep:#12151c;
+    --bg-panel:#1b1f29;
+    --bg-panel-raised:#232838;
+    --line:#2c3242;
+    --text-soft:#9aa3b8;
+    --text-main:#eef0f5;
+    --pink:#ff3d81;
+    --cyan:#2de1fc;
+    --amber:#ffc145;
+    --green:#39ff88;
+    --white:#f5f3ed;
+    --violet:#b98cff;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:var(--bg-deep);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    color:var(--text-main);
+    overflow:hidden;
+  }
+  #app{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    width:100%;
+  }
+
+  /* ---------- DISPLAY (o "vidro" do letreiro) ---------- */
+  #display-wrap{
+    position:relative;
+    flex:1;
+    min-height:0;
+    background:
+      radial-gradient(ellipse at 50% 30%, #1a1f2c 0%, #0d1017 75%);
+    display:flex;
+    align-items:center;
+    overflow:hidden;
+    border-bottom:1px solid var(--line);
+  }
+  #display-wrap::before{
+    content:"";
+    position:absolute;inset:0;
+    background-image:
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 3px);
+    pointer-events:none;
+    opacity:.5;
+  }
+  #marquee-track{
+    display:flex;
+    white-space:nowrap;
+    will-change:transform;
+  }
+  .msg-copy{
+    padding-right:8vw;
+    font-family:'Archivo Black','Arial Black',sans-serif;
+    letter-spacing:0.01em;
+    line-height:1;
+    text-transform:none;
+  }
+  .msg-copy.empty-hint{
+    color:var(--text-soft);
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+  }
+
+  /* modos de exibição */
+  #display-wrap.mode-static #marquee-track{
+    animation:none !important;
+    transform:none !important;
+    width:100%;
+    justify-content:center;
+  }
+  #display-wrap.mode-static .msg-copy{
+    padding-right:0;
+    white-space:normal;
+    text-align:center;
+    width:100%;
+  }
+  #display-wrap.mode-pulse .msg-copy{
+    animation:pulseGlow 1.4s ease-in-out infinite;
+  }
+  @keyframes pulseGlow{
+    0%,100%{opacity:1;}
+    50%{opacity:.35;}
+  }
+
+  @keyframes scrollLeft{
+    from{transform:translateX(0);}
+    to{transform:translateX(-50%);}
+  }
+
+  /* status bar minima acima do display */
+  #status-bar{
+    position:absolute;
+    top:10px;left:14px;right:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:11px;
+    color:var(--text-soft);
+    font-weight:600;
+    letter-spacing:.02em;
+    z-index:3;
+  }
+  #status-bar .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--green);
+    display:inline-block;
+    margin-right:6px;
+    box-shadow:0 0 6px var(--green);
+  }
+
+  #fullscreen-btn{
+    position:absolute;
+    top:8px;right:8px;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.14);
+    color:var(--text-main);
+    width:38px;height:38px;
+    border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    z-index:4;
+  }
+
+  /* ---------- PAINEL DE CONTROLE ---------- */
+  #panel{
+    background:var(--bg-panel);
+    padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    max-height:52vh;
+    overflow-y:auto;
+  }
+  .row-label{
+    font-size:12px;
+    font-weight:700;
+    color:var(--text-soft);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    margin-bottom:8px;
+    display:block;
+  }
+  #text-input{
+    width:100%;
+    background:var(--bg-panel-raised);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+    color:var(--text-main);
+    font-size:16px;
+    font-family:'Inter',sans-serif;
+    resize:none;
+    height:56px;
+  }
+  #text-input:focus{outline:2px solid var(--cyan);outline-offset:1px;}
+
+  .swatches{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .swatch{
+    width:38px;height:38px;
+    border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+    position:relative;
+  }
+  .swatch.active{border-color:var(--text-main);}
+  .swatch.active::after{
+    content:"✓";
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;
+    color:#111;
+    text-shadow:0 0 2px rgba(255,255,255,.6);
+  }
+
+  .seg-control{
+    display:flex;
+    background:var(--bg-panel-raised);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:4px;
+    gap:4px;
+  }
+  .seg-btn{
+    flex:1;
+    border:none;
+    background:transparent;
+    color:var(--text-soft);
+    padding:10px 8px;
+    border-radius:9px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .seg-btn.active{
+    background:var(--cyan);
+    color:#0d1017;
+  }
+
+  .slider-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  input[type="range"]{
+    flex:1;
+    -webkit-appearance:none;
+    height:4px;
+    background:var(--line);
+    border-radius:2px;
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:22px;height:22px;
+    border-radius:50%;
+    background:var(--cyan);
+    cursor:pointer;
+    border:3px solid var(--bg-panel);
+    box-shadow:0 0 0 1px var(--line);
+  }
+  .slider-val{
+    font-size:12px;
+    color:var(--text-soft);
+    font-weight:700;
+    width:52px;
+    text-align:right;
+  }
+
+  #two-col{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="display-wrap" class="mode-scroll">
+    <div id="status-bar">
+      <span><span class="dot"></span>NO AR</span>
+      <span id="clock-label">LETREIRO</span>
+    </div>
+    <button id="fullscreen-btn" title="Tela cheia" aria-label="Tela cheia">⛶</button>
+    <div id="marquee-track">
+      <span class="msg-copy empty-hint" id="copy-a">Digite sua mensagem abaixo para acender o letreiro…</span>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div>
+      <span class="row-label">Mensagem</span>
+      <textarea id="text-input" maxlength="120" placeholder="Ex: PROMOÇÃO HOJE — 20% OFF"></textarea>
+    </div>
+
+    <div>
+      <span class="row-label">Cor do texto</span>
+      <div class="swatches" id="swatches"></div>
+    </div>
+
+    <div id="two-col">
+      <div>
+        <span class="row-label">Modo</span>
+        <div class="seg-control" id="mode-control">
+          <button class="seg-btn active" data-mode="scroll">Rolagem</button>
+          <button class="seg-btn" data-mode="static">Fixo</button>
+          <button class="seg-btn" data-mode="pulse">Piscante</button>
+        </div>
+      </div>
+      <div>
+        <span class="row-label">Fundo</span>
+        <div class="seg-control" id="bg-control">
+          <button class="seg-btn active" data-bg="dark">Escuro</button>
+          <button class="seg-btn" data-bg="black">Preto</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <span class="row-label">Velocidade</span>
+      <div class="slider-row">
+        <input type="range" id="speed" min="4" max="40" value="16">
+        <span class="slider-val" id="speed-val">16 s</span>
+      </div>
+    </div>
+
+    <div>
+      <span class="row-label">Tamanho do texto</span>
+      <div class="slider-row">
+        <input type="range" id="fontsize" min="28" max="140" value="72">
+        <span class="slider-val" id="fontsize-val">72 px</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const textInput = document.getElementById('text-input');
+  const displayWrap = document.getElementById('display-wrap');
+  const track = document.getElementById('marquee-track');
+  const swatchesEl = document.getElementById('swatches');
+  const speedSlider = document.getElementById('speed');
+  const speedVal = document.getElementById('speed-val');
+  const fontSlider = document.getElementById('fontsize');
+  const fontVal = document.getElementById('fontsize-val');
+  const modeControl = document.getElementById('mode-control');
+  const bgControl = document.getElementById('bg-control');
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+  const colors = [
+    {name:'Rosa neon', v:'#ff3d81'},
+    {name:'Ciano', v:'#2de1fc'},
+    {name:'Âmbar', v:'#ffc145'},
+    {name:'Verde', v:'#39ff88'},
+    {name:'Branco', v:'#f5f3ed'},
+    {name:'Violeta', v:'#b98cff'},
+  ];
+
+  let state = {
+    text: '',
+    color: colors[1].v,
+    mode: 'scroll',
+    bg: 'dark',
+    speed: 16,
+    fontsize: 72
+  };
+
+  // build swatches
+  colors.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'swatch' + (c.v === state.color ? ' active' : '');
+    b.style.background = c.v;
+    b.title = c.name;
+    b.setAttribute('aria-label', c.name);
+    b.addEventListener('click', () => {
+      state.color = c.v;
+      [...swatchesEl.children].forEach(el => el.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    });
+    swatchesEl.appendChild(b);
+  });
+
+  function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function render(){
+    const hasText = state.text.trim().length > 0;
+    const shown = hasText ? state.text : 'Digite sua mensagem abaixo para acender o letreiro…';
+
+    track.innerHTML = '';
+    displayWrap.className = 'mode-' + state.mode;
+
+    displayWrap.style.background = state.bg === 'black'
+      ? '#000'
+      : 'radial-gradient(ellipse at 50% 30%, #1a1f2c 0%, #0d1017 75%)';
+
+    const glow = hasText
+      ? `0 0 6px ${state.color}, 0 0 22px ${state.color}66, 0 0 46px ${state.color}33`
+      : 'none';
+
+    const copyCount = state.mode === 'static' ? 1 : 2;
+    for(let i=0;i<copyCount;i++){
+      const span = document.createElement('span');
+      span.className = 'msg-copy' + (hasText ? '' : ' empty-hint');
+      span.textContent = shown;
+      span.style.color = hasText ? state.color : '';
+      span.style.textShadow = hasText ? glow : 'none';
+      span.style.fontSize = (state.mode === 'static'
+        ? Math.min(state.fontsize, 64) + 'px'
+        : state.fontsize + 'px');
+      track.appendChild(span);
+    }
+
+    if(state.mode === 'scroll' && hasText){
+      track.style.animation = `scrollLeft ${state.speed}s linear infinite`;
+    } else {
+      track.style.animation = 'none';
+      track.style.transform = 'none';
+    }
+  }
+
+  textInput.addEventListener('input', e => {
+    state.text = e.target.value;
+    render();
+  });
+
+  modeControl.addEventListener('click', e => {
+    const btn = e.target.closest('.seg-btn');
+    if(!btn) return;
+    [...modeControl.children].forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.mode = btn.dataset.mode;
+    render();
+  });
+
+  bgControl.addEventListener('click', e => {
+    const btn = e.target.closest('.seg-btn');
+    if(!btn) return;
+    [...bgControl.children].forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.bg = btn.dataset.bg;
+    render();
+  });
+
+  speedSlider.addEventListener('input', e => {
+    state.speed = Number(e.target.value);
+    speedVal.textContent = state.speed + ' s';
+    render();
+  });
+
+  fontSlider.addEventListener('input', e => {
+    state.fontsize = Number(e.target.value);
+    fontVal.textContent = state.fontsize + ' px';
+    render();
+  });
+
+  fullscreenBtn.addEventListener('click', () => {
+    const el = document.documentElement;
+    if(!document.fullscreenElement){
+      (el.requestFullscreen || el.webkitRequestFullscreen || function(){}).call(el);
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
