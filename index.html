@@ -247,6 +247,17 @@
     grid-template-columns:1fr 1fr;
     gap:14px;
   }
+
+  /* ---------- MODO TELA CHEIA (esconde o painel) ---------- */
+  #app.fullscreen-mode #panel{
+    display:none;
+  }
+  #app.fullscreen-mode #display-wrap{
+    border-bottom:none;
+  }
+  #app.fullscreen-mode #fullscreen-btn{
+    background:rgba(255,255,255,0.06);
+  }
 </style>
 </head>
 <body>
@@ -313,6 +324,7 @@
 
 <script>
 (function(){
+  const appEl = document.getElementById('app');
   const textInput = document.getElementById('text-input');
   const displayWrap = document.getElementById('display-wrap');
   const track = document.getElementById('marquee-track');
@@ -434,12 +446,31 @@
     render();
   });
 
-  fullscreenBtn.addEventListener('click', () => {
+  function setFullscreenMode(on){
+    appEl.classList.toggle('fullscreen-mode', on);
+    fullscreenBtn.textContent = on ? '✕' : '⛶';
+    fullscreenBtn.title = on ? 'Sair da tela cheia' : 'Tela cheia';
+    fullscreenBtn.setAttribute('aria-label', fullscreenBtn.title);
+
+    // tenta também o modo tela cheia nativo do navegador, quando disponível
     const el = document.documentElement;
-    if(!document.fullscreenElement){
-      (el.requestFullscreen || el.webkitRequestFullscreen || function(){}).call(el);
-    } else {
-      (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+    if(on){
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if(req) req.call(el).catch(() => {});
+    } else if(document.fullscreenElement || document.webkitFullscreenElement){
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if(exit) exit.call(document).catch(() => {});
+    }
+  }
+
+  fullscreenBtn.addEventListener('click', () => {
+    setFullscreenMode(!appEl.classList.contains('fullscreen-mode'));
+  });
+
+  // se o modo nativo for encerrado (ex: usuário aperta Esc), volta o painel também
+  document.addEventListener('fullscreenchange', () => {
+    if(!document.fullscreenElement && appEl.classList.contains('fullscreen-mode')){
+      setFullscreenMode(false);
     }
   });
 
