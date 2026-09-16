@@ -374,7 +374,7 @@
   let state = {
     text: '',
     header: '中断',
-    color: colors[1].v,
+    color: colors[2].v,
     mode: 'scroll',
     bg: 'dark',
     speed: 16,
@@ -421,7 +421,7 @@
 
     const headerText = state.header.trim();
     if(headerText){
-      const headerFontPx = Math.max(containerH * 0.09, 14);
+      const headerFontPx = Math.max(containerH * 1.00, 14);
       headerLabel.textContent = headerText;
       headerLabel.style.display = 'block';
       headerLabel.style.fontSize = headerFontPx + 'px';
