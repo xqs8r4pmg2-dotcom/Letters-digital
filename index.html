@@ -159,6 +159,29 @@
   }
   #text-input:focus{outline:2px solid var(--cyan);outline-offset:1px;}
 
+  #header-input{
+    width:100%;
+    background:var(--bg-panel-raised);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+    color:var(--text-main);
+    font-size:16px;
+    font-family:'Inter',sans-serif;
+  }
+  #header-input:focus{outline:2px solid var(--cyan);outline-offset:1px;}
+
+  #header-label{
+    position:absolute;
+    top:34px;left:14px;right:14px;
+    text-align:center;
+    color:var(--text-main);
+    font-family:'Archivo Black','Arial Black',sans-serif;
+    letter-spacing:.02em;
+    z-index:2;
+    line-height:1;
+  }
+
   .swatches{
     display:flex;
     gap:10px;
@@ -263,12 +286,18 @@
       <span id="clock-label">LETREIRO</span>
     </div>
     <button id="fullscreen-btn" title="Tela cheia" aria-label="Tela cheia">⛶</button>
+    <div id="header-label"></div>
     <div id="marquee-track">
       <span class="msg-copy empty-hint" id="copy-a">Digite sua mensagem abaixo para acender o letreiro…</span>
     </div>
   </div>
 
   <div id="panel">
+    <div>
+      <span class="row-label">Texto fixo no topo (opcional)</span>
+      <input type="text" id="header-input" maxlength="30" placeholder="Ex: 中断" value="中断">
+    </div>
+
     <div>
       <span class="row-label">Mensagem</span>
       <textarea id="text-input" maxlength="120" placeholder="Ex: PROMOÇÃO HOJE — 20% OFF"></textarea>
@@ -320,6 +349,8 @@
 (function(){
   const appEl = document.getElementById('app');
   const textInput = document.getElementById('text-input');
+  const headerInput = document.getElementById('header-input');
+  const headerLabel = document.getElementById('header-label');
   const displayWrap = document.getElementById('display-wrap');
   const track = document.getElementById('marquee-track');
   const swatchesEl = document.getElementById('swatches');
@@ -342,6 +373,7 @@
 
   let state = {
     text: '',
+    header: '中断',
     color: colors[1].v,
     mode: 'scroll',
     bg: 'dark',
@@ -385,6 +417,20 @@
       ? '#000'
       : 'radial-gradient(ellipse at 50% 30%, #1a1f2c 0%, #0d1017 75%)';
 
+    const containerH = displayWrap.clientHeight || window.innerHeight;
+
+    const headerText = state.header.trim();
+    if(headerText){
+      const headerFontPx = Math.max(containerH * 0.06, 14);
+      headerLabel.textContent = headerText;
+      headerLabel.style.display = 'block';
+      headerLabel.style.fontSize = headerFontPx + 'px';
+      displayWrap.style.paddingTop = (headerFontPx * 2.2) + 'px';
+    } else {
+      headerLabel.style.display = 'none';
+      displayWrap.style.paddingTop = '0px';
+    }
+
     const glow = hasText
       ? `0 0 6px ${state.color}, 0 0 22px ${state.color}66, 0 0 46px ${state.color}33`
       : 'none';
@@ -395,7 +441,6 @@
     span.style.color = hasText ? state.color : '';
     span.style.textShadow = hasText ? glow : 'none';
 
-    const containerH = displayWrap.clientHeight || window.innerHeight;
     const basePx = containerH * (state.fontsize / 100);
     span.style.fontSize = (state.mode === 'static'
       ? Math.min(basePx, containerH * 0.4) + 'px'
@@ -425,6 +470,11 @@
 
   textInput.addEventListener('input', e => {
     state.text = e.target.value;
+    render();
+  });
+
+  headerInput.addEventListener('input', e => {
+    state.header = e.target.value;
     render();
   });
 
