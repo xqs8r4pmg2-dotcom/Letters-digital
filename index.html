@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Banner Digital</title>
+<title>Letreiro Digital</title>
 <style>
   :root{
     --bg-deep:#12151c;
@@ -145,7 +145,7 @@
     margin-bottom:8px;
     display:block;
   }
-  #text-input{
+  #text-input, #text-jp-input{
     width:100%;
     background:var(--bg-panel-raised);
     border:1px solid var(--line);
@@ -157,7 +157,7 @@
     resize:none;
     height:56px;
   }
-  #text-input:focus{outline:2px solid var(--cyan);outline-offset:1px;}
+  #text-input:focus, #text-jp-input:focus{outline:2px solid var(--cyan);outline-offset:1px;}
 
   #header-input{
     width:100%;
@@ -175,7 +175,7 @@
     position:absolute;
     top:34px;left:14px;right:14px;
     text-align:center;
-    color:#ff3b3b;
+    color:var(--text-main);
     font-family:'Archivo Black','Arial Black',sans-serif;
     letter-spacing:.02em;
     z-index:2;
@@ -202,6 +202,70 @@
     font-size:14px;
     color:#111;
     text-shadow:0 0 2px rgba(255,255,255,.6);
+  }
+  .custom-swatch{
+    overflow:hidden;
+    background:conic-gradient(from 180deg,#ff3d81,#ffc145,#39ff88,#2de1fc,#b98cff,#ff3d81);
+  }
+  .custom-swatch input[type="color"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;height:100%;
+    border:none;padding:0;
+    cursor:pointer;
+    background:transparent;
+  }
+  .custom-swatch input[type="color"]::-webkit-color-swatch-wrapper{padding:0;}
+  .custom-swatch input[type="color"]::-webkit-color-swatch{border:none;}
+
+  #save-phrase-btn{
+    background:var(--cyan);
+    color:#0d1017;
+    border:none;
+    border-radius:9px;
+    padding:8px 14px;
+    font-size:12px;
+    font-weight:700;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  #saved-phrases{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .phrase-chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--bg-panel-raised);
+    border:1px solid var(--line);
+    color:var(--text-main);
+    border-radius:20px;
+    padding:8px 10px 8px 14px;
+    font-size:13px;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    max-width:100%;
+  }
+  .phrase-chip span:first-child{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    max-width:46vw;
+  }
+  .phrase-del{
+    color:var(--text-soft);
+    font-size:12px;
+    width:18px;height:18px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,0.06);
+    flex-shrink:0;
+  }
+  .empty-saved-hint{
+    color:var(--text-soft);
+    font-size:12px;
   }
 
   .seg-control{
@@ -283,7 +347,7 @@
   <div id="display-wrap" class="mode-scroll">
     <div id="status-bar">
       <span><span class="dot"></span>NO AR</span>
-      <span id="clock-label">BANNER</span>
+      <span id="clock-label">LETREIRO</span>
     </div>
     <button id="fullscreen-btn" title="Tela cheia" aria-label="Tela cheia">⛶</button>
     <div id="header-label"></div>
@@ -299,8 +363,34 @@
     </div>
 
     <div>
-      <span class="row-label">Mensagem</span>
+      <span class="row-label">Cor do texto fixo</span>
+      <div class="swatches" id="header-swatches"></div>
+    </div>
+
+    <div>
+      <span class="row-label">Idioma</span>
+      <div class="seg-control" id="lang-control">
+        <button class="seg-btn active" data-lang="mono">Único</button>
+        <button class="seg-btn" data-lang="bi">Bilíngue (JP / PT)</button>
+      </div>
+    </div>
+
+    <div>
+      <span class="row-label" id="pt-label">Mensagem</span>
       <textarea id="text-input" maxlength="120" placeholder="Ex: PROMOÇÃO HOJE — 20% OFF"></textarea>
+    </div>
+
+    <div id="jp-field-wrap" style="display:none;">
+      <span class="row-label">Mensagem (日本語)</span>
+      <textarea id="text-jp-input" maxlength="120" placeholder="Ex: 本日限定セール" lang="ja"></textarea>
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span class="row-label" style="margin-bottom:0;">Frases salvas</span>
+        <button id="save-phrase-btn" type="button">+ Salvar frase atual</button>
+      </div>
+      <div id="saved-phrases"></div>
     </div>
 
     <div>
@@ -327,7 +417,7 @@
     </div>
 
     <div>
-      <span class="row-label">Velocidade</span>
+      <span class="row-label" id="speed-label">Velocidade</span>
       <div class="slider-row">
         <input type="range" id="speed" min="4" max="40" value="16">
         <span class="slider-val" id="speed-val">16 s</span>
@@ -349,13 +439,20 @@
 (function(){
   const appEl = document.getElementById('app');
   const textInput = document.getElementById('text-input');
+  const textJpInput = document.getElementById('text-jp-input');
+  const jpFieldWrap = document.getElementById('jp-field-wrap');
+  const langControl = document.getElementById('lang-control');
   const headerInput = document.getElementById('header-input');
   const headerLabel = document.getElementById('header-label');
+  const headerSwatchesEl = document.getElementById('header-swatches');
   const displayWrap = document.getElementById('display-wrap');
   const track = document.getElementById('marquee-track');
   const swatchesEl = document.getElementById('swatches');
+  const savePhraseBtn = document.getElementById('save-phrase-btn');
+  const savedPhrasesEl = document.getElementById('saved-phrases');
   const speedSlider = document.getElementById('speed');
   const speedVal = document.getElementById('speed-val');
+  const speedLabel = document.getElementById('speed-label');
   const fontSlider = document.getElementById('fontsize');
   const fontVal = document.getElementById('fontsize-val');
   const modeControl = document.getElementById('mode-control');
@@ -364,51 +461,176 @@
 
   const colors = [
     {name:'Rosa neon', v:'#ff3d81'},
-    {name:'Azul', v:'#0A66C2'},
+    {name:'Ciano', v:'#2de1fc'},
     {name:'Âmbar', v:'#ffc145'},
     {name:'Verde', v:'#39ff88'},
     {name:'Branco', v:'#f5f3ed'},
     {name:'Violeta', v:'#b98cff'},
+    {name:'Vermelho', v:'#ff3b3b'},
+    {name:'Laranja', v:'#ff9142'},
+    {name:'Azul', v:'#3d8bff'},
+    {name:'Magenta', v:'#ff2ecb'},
+    {name:'Lima', v:'#c6ff3d'},
+    {name:'Turquesa', v:'#28e0b0'},
+    {name:'Dourado', v:'#ffd700'},
   ];
+
+  const STORAGE_KEY = 'letreiro:savedPhrases';
 
   let state = {
     text: '',
+    textJP: '',
+    bilingual: false,
     header: '中断',
     color: colors[1].v,
+    headerColor: '#ff3b3b',
     mode: 'scroll',
     bg: 'dark',
     speed: 16,
-    fontsize: 30
+    fontsize: 30,
+    activeLangIndex: 0
   };
 
-  // build swatches
-  colors.forEach((c, i) => {
-    const b = document.createElement('button');
-    b.className = 'swatch' + (c.v === state.color ? ' active' : '');
-    b.style.background = c.v;
-    b.title = c.name;
-    b.setAttribute('aria-label', c.name);
-    b.addEventListener('click', () => {
-      state.color = c.v;
-      [...swatchesEl.children].forEach(el => el.classList.remove('active'));
-      b.classList.add('active');
+  // ---------- cores: presets + cor personalizada (reaproveitado para texto e cabeçalho) ----------
+  function buildSwatchRow(container, getValue, setValue){
+    colors.forEach((c) => {
+      const b = document.createElement('button');
+      b.className = 'swatch' + (c.v === getValue() ? ' active' : '');
+      b.style.background = c.v;
+      b.title = c.name;
+      b.setAttribute('aria-label', c.name);
+      b.addEventListener('click', () => {
+        setValue(c.v);
+        [...container.querySelectorAll('.swatch')].forEach(el => el.classList.remove('active'));
+        b.classList.add('active');
+        render();
+      });
+      container.appendChild(b);
+    });
+
+    const customSwatch = document.createElement('label');
+    customSwatch.className = 'swatch custom-swatch';
+    customSwatch.title = 'Cor personalizada';
+    const customInput = document.createElement('input');
+    customInput.type = 'color';
+    customInput.value = getValue();
+    customInput.addEventListener('input', e => {
+      setValue(e.target.value);
+      [...container.querySelectorAll('.swatch')].forEach(el => el.classList.remove('active'));
+      customSwatch.classList.add('active');
       render();
     });
-    swatchesEl.appendChild(b);
-  });
+    customSwatch.appendChild(customInput);
+    container.appendChild(customSwatch);
+
+    if(!colors.some(c => c.v === getValue())){
+      customSwatch.classList.add('active');
+    }
+  }
+
+  buildSwatchRow(swatchesEl, () => state.color, v => { state.color = v; });
+  buildSwatchRow(headerSwatchesEl, () => state.headerColor, v => { state.headerColor = v; });
 
   function escapeHtml(s){
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
+  function truncate(s, n){
+    return s.length > n ? s.slice(0, n - 1) + '…' : s;
+  }
 
-  let currentAnim = null;
+  // ---------- frases salvas (localStorage — só neste aparelho) ----------
+  function loadSavedPhrases(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function persistSavedPhrases(list){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }catch(e){ /* armazenamento indisponível */ }
+  }
+  function renderSavedPhrases(){
+    const phrases = loadSavedPhrases();
+    savedPhrasesEl.innerHTML = '';
+    if(phrases.length === 0){
+      const hint = document.createElement('span');
+      hint.className = 'empty-saved-hint';
+      hint.textContent = 'Nenhuma frase salva ainda.';
+      savedPhrasesEl.appendChild(hint);
+      return;
+    }
+    phrases.forEach(p => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'phrase-chip';
 
-  function render(){
-    const hasText = state.text.trim().length > 0;
-    const shown = hasText ? state.text : 'Digite sua mensagem abaixo para acender o letreiro…';
+      const label = document.createElement('span');
+      label.textContent = p.jp
+        ? `${truncate(p.pt || '(sem PT)', 14)} / ${truncate(p.jp, 14)}`
+        : truncate(p.pt, 22);
+      chip.appendChild(label);
 
-    if(currentAnim){ currentAnim.cancel(); currentAnim = null; }
+      const del = document.createElement('span');
+      del.className = 'phrase-del';
+      del.textContent = '✕';
+      del.addEventListener('click', ev => {
+        ev.stopPropagation();
+        persistSavedPhrases(loadSavedPhrases().filter(x => x.id !== p.id));
+        renderSavedPhrases();
+      });
+      chip.appendChild(del);
 
+      chip.addEventListener('click', () => {
+        state.text = p.pt || '';
+        state.textJP = p.jp || '';
+        textInput.value = state.text;
+        textJpInput.value = state.textJP;
+        if(p.jp){ setBilingual(true); } else { setBilingual(state.bilingual); }
+        state.activeLangIndex = 0;
+        render();
+      });
+
+      savedPhrasesEl.appendChild(chip);
+    });
+  }
+
+  savePhraseBtn.addEventListener('click', () => {
+    const pt = state.text.trim();
+    const jp = state.bilingual ? state.textJP.trim() : '';
+    if(!pt && !jp) return;
+    const phrases = loadSavedPhrases();
+    phrases.unshift({ id: Date.now().toString(36), pt, jp });
+    if(phrases.length > 24) phrases.length = 24;
+    persistSavedPhrases(phrases);
+    renderSavedPhrases();
+  });
+
+  // ---------- idioma (único / bilíngue) ----------
+  function setBilingual(on){
+    state.bilingual = on;
+    [...langControl.children].forEach(b => b.classList.toggle('active', (b.dataset.lang === 'bi') === on));
+    jpFieldWrap.style.display = on ? 'block' : 'none';
+  }
+
+  langControl.addEventListener('click', e => {
+    const btn = e.target.closest('.seg-btn');
+    if(!btn) return;
+    setBilingual(btn.dataset.lang === 'bi');
+    state.activeLangIndex = 0;
+    render();
+  });
+
+  // ---------- exibição ----------
+  let renderToken = 0;
+  let cycleTimer = null;
+
+  function getActiveMessages(){
+    const list = [];
+    if(state.text.trim()) list.push({ lang: 'pt', value: state.text });
+    if(state.bilingual && state.textJP.trim()) list.push({ lang: 'jp', value: state.textJP });
+    return list;
+  }
+
+  function drawFrame(text, isHint, lang){
     track.innerHTML = '';
     track.style.transform = 'none';
     displayWrap.className = 'mode-' + state.mode;
@@ -421,25 +643,28 @@
 
     const headerText = state.header.trim();
     if(headerText){
-      const headerFontPx = Math.max(containerH * 0.30, 14);
+      const headerFontPx = Math.max(containerH * 0.06, 14);
       headerLabel.textContent = headerText;
       headerLabel.style.display = 'block';
       headerLabel.style.fontSize = headerFontPx + 'px';
-      displayWrap.style.paddingTop = (headerFontPx * 1.2) + 'px';
+      headerLabel.style.color = state.headerColor;
+      headerLabel.style.textShadow = `0 0 4px ${state.headerColor}, 0 0 14px ${state.headerColor}66`;
+      displayWrap.style.paddingTop = (headerFontPx * 2.2) + 'px';
     } else {
       headerLabel.style.display = 'none';
       displayWrap.style.paddingTop = '0px';
     }
 
-    const glow = hasText
+    const glow = !isHint
       ? `0 0 6px ${state.color}, 0 0 22px ${state.color}66, 0 0 46px ${state.color}33`
       : 'none';
 
     const span = document.createElement('span');
-    span.className = 'msg-copy' + (hasText ? '' : ' empty-hint');
-    span.textContent = shown;
-    span.style.color = hasText ? state.color : '';
-    span.style.textShadow = hasText ? glow : 'none';
+    span.className = 'msg-copy' + (isHint ? ' empty-hint' : '');
+    span.textContent = isHint ? 'Digite sua mensagem abaixo para acender o letreiro…' : text;
+    span.style.color = isHint ? '' : state.color;
+    span.style.textShadow = isHint ? 'none' : glow;
+    span.lang = lang === 'jp' ? 'ja' : 'pt-BR';
 
     const basePx = containerH * (state.fontsize / 100);
     span.style.fontSize = (state.mode === 'static'
@@ -447,29 +672,78 @@
       : basePx + 'px');
 
     track.appendChild(span);
+    return span;
+  }
 
-    if(state.mode === 'scroll' && hasText){
-      // mede a largura real do container e do texto, para começar
-      // sempre totalmente fora da tela (à direita) e terminar totalmente
-      // fora (à esquerda), como um letreiro físico de verdade.
-      const containerW = displayWrap.clientWidth;
-      const textW = span.getBoundingClientRect().width;
-      currentAnim = track.animate(
-        [
-          { transform: `translateX(${containerW}px)` },
-          { transform: `translateX(${-textW}px)` }
-        ],
-        {
-          duration: state.speed * 1000,
-          iterations: Infinity,
-          easing: 'linear'
-        }
-      );
+  let currentAnim = null;
+
+  function scrollCycle(token, messages){
+    if(token !== renderToken) return;
+    const msg = messages[state.activeLangIndex % messages.length];
+    const span = drawFrame(msg.value, false, msg.lang);
+
+    const containerW = displayWrap.clientWidth;
+    const textW = span.getBoundingClientRect().width;
+    currentAnim = track.animate(
+      [
+        { transform: `translateX(${containerW}px)` },
+        { transform: `translateX(${-textW}px)` }
+      ],
+      { duration: state.speed * 1000, iterations: 1, easing: 'linear', fill: 'forwards' }
+    );
+    currentAnim.finished.then(() => {
+      if(token !== renderToken) return;
+      if(messages.length > 1){
+        state.activeLangIndex = (state.activeLangIndex + 1) % messages.length;
+      }
+      scrollCycle(token, messages);
+    }).catch(() => { /* animação cancelada por uma nova renderização */ });
+  }
+
+  function render(){
+    const myToken = ++renderToken;
+    if(currentAnim){ currentAnim.cancel(); currentAnim = null; }
+    if(cycleTimer){ clearInterval(cycleTimer); cycleTimer = null; }
+
+    speedLabel.textContent = (state.mode !== 'scroll' && state.bilingual)
+      ? 'Intervalo de troca de idioma'
+      : 'Velocidade';
+
+    const messages = getActiveMessages();
+
+    if(messages.length === 0){
+      drawFrame('', true, 'pt');
+      return;
+    }
+    if(state.activeLangIndex >= messages.length) state.activeLangIndex = 0;
+
+    if(state.mode === 'scroll'){
+      scrollCycle(myToken, messages);
+    } else {
+      const showCurrent = () => {
+        const msg = messages[state.activeLangIndex % messages.length];
+        drawFrame(msg.value, false, msg.lang);
+      };
+      showCurrent();
+      if(messages.length > 1){
+        cycleTimer = setInterval(() => {
+          if(myToken !== renderToken) return;
+          state.activeLangIndex = (state.activeLangIndex + 1) % messages.length;
+          showCurrent();
+        }, Math.max(state.speed, 3) * 1000);
+      }
     }
   }
 
   textInput.addEventListener('input', e => {
     state.text = e.target.value;
+    state.activeLangIndex = 0;
+    render();
+  });
+
+  textJpInput.addEventListener('input', e => {
+    state.textJP = e.target.value;
+    state.activeLangIndex = 0;
     render();
   });
 
@@ -536,6 +810,7 @@
     }
   });
 
+  renderSavedPhrases();
   render();
 
   window.addEventListener('resize', render);
